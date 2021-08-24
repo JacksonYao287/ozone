@@ -207,7 +207,10 @@ public class ContainerStateMap {
     Preconditions.checkNotNull(containerID);
     Preconditions.checkNotNull(replica);
     if (contains(containerID)) {
-      replicaMap.get(containerID).remove(replica);
+      final Set<ContainerReplica> replicas = replicaMap.get(containerID);
+      synchronized (replicas) {
+        replicas.remove(replica);
+      }
     }
   }
 

@@ -1097,19 +1097,37 @@ public class ReplicationManager implements SCMService {
           .stream()
           .map(action -> action.datanode)
           .collect(Collectors.toList());
-      final List<DatanodeDetails> source = replicas.stream()
-          .filter(r ->
-              r.getState() == State.QUASI_CLOSED ||
-              r.getState() == State.CLOSED)
-          // Exclude stale and dead nodes. This is particularly important for
-          // maintenance nodes, as the replicas will remain present in the
-          // container manager, even when they go dead.
-          .filter(r ->
-              getNodeStatus(r.getDatanodeDetails()).isHealthy())
-          .filter(r -> !deletionInFlight.contains(r.getDatanodeDetails()))
-          .sorted((r1, r2) -> r2.getSequenceId().compareTo(r1.getSequenceId()))
-          .map(ContainerReplica::getDatanodeDetails)
-          .collect(Collectors.toList());
+      final List<DatanodeDetails> source;
+      final List<DatanodeDetails> excludeList;
+
+      //there may be a scenario that a replica is in the replica set
+      //when `source` is being generated, and then removed from replica set
+      //somehow(maybe by containerReportHandler#processMissingReplicas).
+      //when `excludeList` is being generated, the replica is not included.
+      //so this replica will not be definitely evicted from `selectedDatanodes`
+      //this will lead to a scenario that we send a replication command
+      //to a datanode to replicate a container replica from itself.
+      synchronized (replicas) {
+        source = replicas.stream()
+            .filter(r ->
+                r.getState() == State.QUASI_CLOSED ||
+                    r.getState() == State.CLOSED)
+            // Exclude stale and dead nodes. This is particularly important for
+            // maintenance nodes, as the replicas will remain present in the
+            // container manager, even when they go dead.
+            .filter(r ->
+                getNodeStatus(r.getDatanodeDetails()).isHealthy())
+            .filter(r -> !deletionInFlight.contains(r.getDatanodeDetails()))
+            .sorted((r1, r2) ->
+                r2.getSequenceId().compareTo(r1.getSequenceId()))
+            .map(ContainerReplica::getDatanodeDetails)
+            .collect(Collectors.toList());
+
+        excludeList = replicas.stream()
+            .map(ContainerReplica::getDatanodeDetails)
+            .collect(Collectors.toList());
+      }
+
       if (source.size() > 0) {
         final int replicationFactor = container
             .getReplicationConfig().getRequiredNodes();
@@ -1131,9 +1149,6 @@ public class ReplicationManager implements SCMService {
           return;
         }
 
-        final List<DatanodeDetails> excludeList = replicas.stream()
-            .map(ContainerReplica::getDatanodeDetails)
-            .collect(Collectors.toList());
         excludeList.addAll(replicationInFlight);
         final List<DatanodeDetails> selectedDatanodes = containerPlacement
             .chooseDatanodes(excludeList, null, replicasNeeded,
