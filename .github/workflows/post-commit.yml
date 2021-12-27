@@ -32,11 +32,11 @@ jobs:
       GITHUB_CONTEXT: ${{ toJson(github) }}
     outputs:
       basic-checks: ${{ steps.selective-checks.outputs.basic-checks }}
-      needs-basic-checks: ${{ steps.selective-checks.outputs.needs-basic-checks }}
+      needs-basic-checks: false
       needs-build: ${{ steps.selective-checks.outputs.needs-build }}
-      needs-compose-tests: ${{ steps.selective-checks.outputs.needs-compose-tests }}
-      needs-dependency-check: ${{ steps.selective-checks.outputs.needs-dependency-check }}
-      needs-integration-tests: ${{ steps.selective-checks.outputs.needs-integration-tests }}
+      needs-compose-tests: false
+      needs-dependency-check: false
+      needs-integration-tests: false
       needs-kubernetes-tests: ${{ steps.selective-checks.outputs.needs-kubernetes-tests }}
     steps:
       - name: "Checkout ${{ github.ref }} ( ${{ github.sha }} )"
@@ -71,7 +71,7 @@ jobs:
     if: needs.build-info.outputs.needs-build == 'true'
     strategy:
       matrix:
-        java: [ 8, 11 ]
+        java: [ 8 ]
       fail-fast: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Checkout project
