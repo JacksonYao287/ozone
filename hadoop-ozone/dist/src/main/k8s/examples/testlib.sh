@@ -32,6 +32,7 @@ retry() {
 grep_log() {
    CONTAINER="$1"
    PATTERN="$2"
+   kubectl logs "$1"
    kubectl logs "$1"  | grep "$PATTERN"
 }
 
