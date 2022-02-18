@@ -62,5 +62,4 @@ spec:
           mountPath: /data
       volumes:
         - name: data
-          emptyDir:
-            sizeLimit: 1Gi
+          emptyDir: {}
