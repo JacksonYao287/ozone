@@ -65,17 +65,12 @@ public class ReplicatedFileChecksumHelper extends BaseFileChecksumHelper {
 
   @Override
   protected void checksumBlocks() throws IOException {
-    long currentLength = 0;
     for (blockIdx = 0;
          blockIdx < getKeyLocationInfoList().size() && getRemaining() >= 0;
          blockIdx++) {
       OmKeyLocationInfo keyLocationInfo =
           getKeyLocationInfoList().get(blockIdx);
-      currentLength += keyLocationInfo.getLength();
-      if (currentLength > getLength()) {
-        return;
-      }
-
+      
       if (!checksumBlock(keyLocationInfo)) {
         throw new PathIOException(getSrc(),
             "Fail to get block MD5 for " + keyLocationInfo);
@@ -101,6 +96,7 @@ public class ReplicatedFileChecksumHelper extends BaseFileChecksumHelper {
         getChunkInfos(keyLocationInfo);
     ContainerProtos.ChecksumData checksumData =
         chunkInfos.get(0).getChecksumData();
+    setChecksumType(checksumData.getType());
     int bytesPerChecksum = checksumData.getBytesPerChecksum();
     setBytesPerCRC(bytesPerChecksum);
 
@@ -171,8 +167,7 @@ public class ReplicatedFileChecksumHelper extends BaseFileChecksumHelper {
       throws IOException {
     AbstractBlockChecksumComputer blockChecksumComputer =
         new ReplicatedBlockChecksumComputer(chunkInfoList);
-    // TODO: support composite CRC
-    blockChecksumComputer.compute();
+    blockChecksumComputer.compute(getCombineMode());
 
     return blockChecksumComputer.getOutByteBuffer();
   }
