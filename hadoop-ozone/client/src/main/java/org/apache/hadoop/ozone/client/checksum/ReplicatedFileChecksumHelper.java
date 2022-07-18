@@ -65,12 +65,16 @@ public class ReplicatedFileChecksumHelper extends BaseFileChecksumHelper {
 
   @Override
   protected void checksumBlocks() throws IOException {
+    long currentLen = 0;
     for (blockIdx = 0;
          blockIdx < getKeyLocationInfoList().size() && getRemaining() >= 0;
          blockIdx++) {
       OmKeyLocationInfo keyLocationInfo =
           getKeyLocationInfoList().get(blockIdx);
-      
+      currentLen += keyLocationInfo.getLength();
+      if(currentLen > getLength()) {
+        return;
+      }
       if (!checksumBlock(keyLocationInfo)) {
         throw new PathIOException(getSrc(),
             "Fail to get block MD5 for " + keyLocationInfo);

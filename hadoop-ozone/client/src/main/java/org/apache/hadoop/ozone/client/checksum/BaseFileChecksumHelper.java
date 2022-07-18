@@ -43,6 +43,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
+
+import static java.lang.Math.max;
 
 /**
  * The base class to support file checksum.
@@ -279,12 +282,13 @@ public abstract class BaseFileChecksumHelper {
   }
 
   FileChecksum makeCompositeCrcResult() throws IOException {
-    long blockSizeHint = 0;
-    if (keyLocationInfos.size() > 0) {
-      blockSizeHint = keyLocationInfos.get(0).getLength();
-    }
+    AtomicLong blockSizeHint = new AtomicLong();
+    keyLocationInfos.forEach(k -> {
+      long len = k.getLength();
+      blockSizeHint.set(max(blockSizeHint.get(), len));
+    });
     CrcComposer crcComposer =
-        CrcComposer.newCrcComposer(toHadoopChecksumType(), blockSizeHint);
+        CrcComposer.newCrcComposer(toHadoopChecksumType(), blockSizeHint.get());
     byte[] blockChecksumBytes = blockChecksumBuf.getData();
 
     for (int i = 0; i < keyLocationInfos.size(); ++i) {

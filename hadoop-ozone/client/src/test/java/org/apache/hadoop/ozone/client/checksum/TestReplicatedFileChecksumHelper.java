@@ -374,4 +374,38 @@ public class TestReplicatedFileChecksumHelper {
     }
   }
 
+  /**
+   * Write a real key and compute file checksum of it.
+   * @throws IOException
+   */
+  @Test
+  public void testPutKeyChecksumCompositeCrC() throws IOException {
+    //File file = new File("/Users/jackson/Downloads/ozoneEC/settings.xml");
+    File file = new File("/Users/jackson/Downloads/ozoneEC/400M.dat");
+    FileInputStream fis = new FileInputStream(file);
+    long length = file.length();
+    byte[] fileBytes = new byte[(int) length];
+    BufferedInputStream bis = new BufferedInputStream(fis);
+    bis.read(fileBytes);
+    OzoneBucket bucket = getOzoneBucket();
+
+    String keyName = UUID.randomUUID().toString();
+
+    try (OzoneOutputStream out = bucket
+        .createKey(keyName, fileBytes.length,
+            ReplicationType.RATIS, ONE, new HashMap<>())) {
+      out.write(fileBytes);
+      out.flush();
+    }
+
+    OzoneClientConfig.ChecksumCombineMode combineMode =
+        OzoneClientConfig.ChecksumCombineMode.COMPOSITE_CRC;
+
+    ReplicatedFileChecksumHelper helper = new ReplicatedFileChecksumHelper(
+        volume, bucket, keyName, length, combineMode, rpcClient);
+
+    helper.compute();
+    FileChecksum fileChecksum = helper.getFileChecksum();
+    assertEquals(1, helper.getKeyLocationInfoList().size());
+  }
 }
